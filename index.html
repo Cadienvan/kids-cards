@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        position: relative;
+        height: 100vh;
+        margin: 0;
+        background: skyblue;
+      }
+      .tile {
+        position: absolute;
+        width: 240px;
+        height: 240px;
+        background: #eee;
+        border: 1px solid #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 80px;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+      .tile.flipped {
+        background-size: cover;
+        background-position: center;
+        color: transparent;
+      }
+      .tile.wrong {
+        background: red !important;
+      }
+      .tile.glow {
+        box-shadow: 0 0 20px 5px yellow;
+      }
+      .theme-buttons {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        display: flex;
+        gap: 10px;
+      }
+      .theme-button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+        background: #fff;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="theme-buttons">
+      <button class="theme-button" onclick="changeTheme('paw')">Paw Patrol</button>
+      <button class="theme-button" onclick="changeTheme('spidey')">Spidey</button>
+    </div>
+    <script>
+      function changeTheme(newTheme) {
+        window.location.href = `?theme=${newTheme}`;
+      }
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const theme = urlParams.get("theme") || "paw";
+      const totalTiles = 10;
+      let expectedNumber = 1;
+      const tileWidth = 240;
+      const tileHeight = 240;
+      const placedTiles = []; // array di posizioni {x, y}
+      let glowTimeout;
+
+      function overlaps(x, y, w, h, tiles) {
+        for (const t of tiles) {
+          const noOverlap = t.x + w < x || x + w < t.x || t.y + h < y || y + h < t.y;
+          if (!noOverlap) return true;
+        }
+        return false;
+      }
+
+      function resetGlowTimeout() {
+        clearTimeout(glowTimeout);
+        glowTimeout = setTimeout(() => {
+          const nextTile = document.querySelector(`.tile:not(.flipped):not(.wrong)`);
+          if (nextTile) {
+            nextTile.classList.add("glow");
+          }
+        }, 25000);
+      }
+
+      document.addEventListener("click", event => {
+        if (event.target.classList.contains("tile")) {
+          document.querySelectorAll(".tile.glow").forEach(tile => tile.classList.remove("glow"));
+          resetGlowTimeout();
+        }
+      });
+
+      resetGlowTimeout();
+
+      for (let i = 1; i <= totalTiles; i++) {
+        let tileX,
+          tileY,
+          attempts = 0;
+        let foundSpot = false;
+
+        while (!foundSpot && attempts < 1000) {
+          tileX = Math.random() * (window.innerWidth - tileWidth);
+          tileY = Math.random() * (window.innerHeight - tileHeight);
+          if (!overlaps(tileX, tileY, tileWidth, tileHeight, placedTiles)) {
+            foundSpot = true;
+          }
+          attempts++;
+        }
+
+        if (!foundSpot) {
+          console.warn("Non è stato possibile trovare spazio per tutte le tessere.");
+          break;
+        }
+
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        tile.textContent = i;
+        tile.style.left = tileX + "px";
+        tile.style.top = tileY + "px";
+
+        tile.addEventListener("click", () => {
+          const numberClicked = parseInt(tile.textContent);
+          if (numberClicked === expectedNumber) {
+            tile.classList.add("flipped");
+            tile.style.backgroundImage = `url('${theme}/${numberClicked}.jpg')`;
+            expectedNumber++;
+            if (expectedNumber > totalTiles) {
+              // Tutte trovate, inizia la rotazione casuale
+              startRandomRotation();
+            }
+          } else {
+            tile.classList.add("wrong");
+            setTimeout(() => tile.classList.remove("wrong"), 1000);
+          }
+        });
+
+        document.body.appendChild(tile);
+        placedTiles.push({ x: tileX, y: tileY });
+      }
+
+      function startRandomRotation() {
+        setInterval(() => {
+          const tiles = document.querySelectorAll(".tile");
+          tiles.forEach(t => {
+            const randomAngle = Math.floor(Math.random() * 360);
+            t.style.transform = `rotate(${randomAngle}deg)`;
+          });
+        }, 1000);
+      }
+    </script>
+  </body>
+</html>
